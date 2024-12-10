@@ -1,4 +1,4 @@
-import "./styles/globals.css";
+import "./globals.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { getServerSession } from "next-auth";
