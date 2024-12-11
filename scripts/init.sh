@@ -9,7 +9,7 @@ echo "🚀 Starting setup..."
 # Remove any existing app directory
 rm -rf $APP_NAME
 
-# 1. Create Next.js TypeScript app with tailwind, src directory, app router, and no ESLint
+# 1. Create Next.js TypeScript app with Tailwind, src directory, app router, and no ESLint
 echo "🛠 Creating Next.js app..."
 npx create-next-app@latest $APP_NAME --ts --tailwind --src-dir --app --no-eslint --use-npm
 
@@ -17,7 +17,6 @@ cd $APP_NAME
 
 # 2. Install dependencies
 echo "📦 Installing dependencies..."
-# We include Prisma, NextAuth, Prisma adapter, React Query, Zod, shadcn/ui, Inngest, Resend, AWS S3, and Supabase
 npm install zod @tanstack/react-query @shadcn/ui prisma @prisma/client @next-auth/prisma-adapter next-auth resend @aws-sdk/client-s3 inngest @supabase/supabase-js
 
 # Prisma init
@@ -33,35 +32,36 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
+  id             String    @id @default(cuid())
+  name           String?
+  email          String?   @unique
+  emailVerified  DateTime?
+  image          String?
   hashedPassword String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
+  accounts Account[]
+  sessions Session[]
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?
-  access_token       String?
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?
-  session_state      String?
+  id                String @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -85,7 +85,7 @@ npx shadcn@latest add button
 npx shadcn@latest add card
 npx shadcn@latest add input
 
-# Ensure globals.css for tailwind
+# Ensure globals.css for Tailwind
 cat > src/app/globals.css <<EOF
 @tailwind base;
 @tailwind components;
@@ -100,56 +100,67 @@ mkdir -p src/app/api/upload
 mkdir -p src/app/api/inngest
 mkdir -p src/app/dashboard
 mkdir -p src/components/ui
+mkdir -p src/components/ClientProvider
 mkdir -p src/lib/email/templates
 mkdir -p src/lib/zod
 mkdir -p src/lib
 mkdir -p src/hooks
 mkdir -p prisma/migrations
 
-# App layout
+# App layout (Server Component)
 cat > src/app/layout.tsx <<EOF
 import "./globals.css";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-
-const queryClient = new QueryClient();
 
 export const metadata = {
   title: "$APP_NAME",
   description: "A Next.js Starter",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
-  console.log("user id", session?.user);
-
   return (
     <html lang="en">
-      <body>
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
 EOF
 
+# ClientProvider Component (Client Component)
+cat > src/components/ClientProvider/index.tsx <<EOF
+"use client";
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient();
+
+export default function ClientProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
+EOF
+
 # Main page
 cat > src/app/page.tsx <<EOF
+import React from "react";
+import ClientProvider from "@/components/ClientProvider";
+
 export default function Page() {
   return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold">Welcome to $APP_NAME</h1>
-      <p>Next.js + NextAuth + Prisma + and more...</p>
-    </div>
-  )
+    <ClientProvider>
+      <div className="p-4">
+        <h1 className="text-xl font-bold">Welcome to $APP_NAME</h1>
+        <p>Next.js + NextAuth + Prisma + and more...</p>
+      </div>
+    </ClientProvider>
+  );
 }
 EOF
 
@@ -335,6 +346,7 @@ EOF
 echo "⚠️ Note: Prisma migrate requires DATABASE_URL and NextAuth requires EMAIL settings. Set these in a .env file."
 echo "Example .env:"
 echo "DATABASE_URL='postgresql://...'"
+echo "DIRECT_URL='postgresql://...'"
 echo "RESEND_API_KEY='...'"
 echo "EMAIL_SERVER='...' # SMTP info"
 echo "EMAIL_FROM='no-reply@yourdomain.com'"
@@ -343,6 +355,7 @@ echo "AWS_SECRET_ACCESS_KEY='...'"
 echo "AWS_REGION='...'"
 echo "S3_BUCKET='...'"
 echo
+echo "Then run: npx prisma generate"
 echo "Then run: npx prisma migrate dev"
 echo "Start dev server: npm run dev"
 echo "✅ Setup Complete!"
